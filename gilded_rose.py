@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+from collections import defaultdict
 
 class Item:
     """ DO NOT CHANGE THIS CLASS!!!"""
@@ -11,6 +11,12 @@ class Item:
     def __repr__(self):
         return "%s, %s, %s" % (self.name, self.sell_in, self.quality)
 
+class DegradeSetting:
+    """ DO NOT CHANGE THIS CLASS!!!"""
+    def __init__(self, aged=1, degrade=1, multiplier=1):
+        self.aged = aged
+        self.degrade = degrade
+        self.multiplier = multiplier
 
 class GildedRose(object):
 
@@ -19,31 +25,25 @@ class GildedRose(object):
         self.items = items
 
     def update_quality(self):
+        def get_backstage_pass_multi(quality, sell_in):
+            if sell_in <= 0:
+                return -quality
+            if sell_in <= 5:
+                return 3
+            if sell_in <= 10:
+                return 2
+            return 1
+
         for item in self.items:
-            if item.name != "Aged Brie" and item.name != "Backstage passes to a TAFKAL80ETC concert":
-                if item.quality > 0:
-                    if item.name != "Sulfuras, Hand of Ragnaros":
-                        item.quality = item.quality - 1
-            else:
-                if item.quality < 50:
-                    item.quality = item.quality + 1
-                    if item.name == "Backstage passes to a TAFKAL80ETC concert":
-                        if item.sell_in < 11:
-                            if item.quality < 50:
-                                item.quality = item.quality + 1
-                        if item.sell_in < 6:
-                            if item.quality < 50:
-                                item.quality = item.quality + 1
-            if item.name != "Sulfuras, Hand of Ragnaros":
-                item.sell_in = item.sell_in - 1
-            if item.sell_in < 0:
-                if item.name != "Aged Brie":
-                    if item.name != "Backstage passes to a TAFKAL80ETC concert":
-                        if item.quality > 0:
-                            if item.name != "Sulfuras, Hand of Ragnaros":
-                                item.quality = item.quality - 1
-                    else:
-                        item.quality = item.quality - item.quality
-                else:
-                    if item.quality < 50:
-                        item.quality = item.quality + 1
+            
+            default_multiplier = 1 + int(item.sell_in <= 0)
+            item_config = defaultdict(lambda: DegradeSetting(), {
+                "Aged Brie": DegradeSetting(degrade=-1, multiplier=default_multiplier),
+                "Sulfuras, Hand of Ragnaros": DegradeSetting(0, 0, default_multiplier),
+                "Backstage passes to a TAFKAL80ETC concert": DegradeSetting(degrade=-1, multiplier=get_backstage_pass_multi(item.quality, item.sell_in)),
+            })
+
+            
+            item.quality = min(max(0, item.quality - item_config[item.name].degrade * item_config[item.name].multiplier), 50)
+            item.sell_in = item.sell_in - item_config[item.name].aged
+    
